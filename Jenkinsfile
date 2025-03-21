@@ -1,67 +1,102 @@
 pipeline {
     agent any
+
     environment {
-        DOCKER_IMAGE = "mohana0304/docker-app:latest"  // Change this to your registry
-        CONTAINER_NAME = "docker-running-app"
-        REGISTRY_CREDENTIALS = "docker-hub-credentials"  // Jenkins credentials ID
+        BACKEND_IMAGE = "sujisuki/backend-app:latest"
+        FRONTEND_IMAGE = "sujisuki/frontend-app:latest"
+        BACKEND_CONTAINER = "backend-running-app"
+        FRONTEND_CONTAINER = "frontend-running-app"
+        REGISTRY_CREDENTIALS = "docker_mona"
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'github-mona', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    git url: "https://$GIT_USER:$GIT_TOKEN@github.com/mohana0304/kubernetes-demo.git", branch: 'main'
+                withCredentials([usernamePassword(credentialsId: 'github_mona', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+                    git url: "https://$GIT_USER:$GIT_TOKEN@github.com/mohana0304/kubernetes.git", branch: 'main'
                 }
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t $DOCKER_IMAGE .'
+        stage('Build Docker Images') {
+            parallel {
+                stage('Build Backend Image') {
+                    steps {
+                        dir('backend') {
+                            sh 'docker build -t $BACKEND_IMAGE .'
+                        }
+                    }
+                }
+
+                stage('Build Frontend Image') {
+                    steps {
+                        dir('frontend') {
+                            sh 'docker build -t $FRONTEND_IMAGE .'
+                        }
+                    }
+                }
             }
         }
 
         stage('Login to Docker Registry') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker-mona', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'docker_mona', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                 }
             }
         }
 
-        stage('Push to Container Registry') {
-            steps {
-                sh 'docker push $DOCKER_IMAGE'
+        stage('Push Images to Docker Hub') {
+            parallel {
+                stage('Push Backend Image') {
+                    steps {
+                        sh 'docker push $BACKEND_IMAGE'
+                    }
+                }
+
+                stage('Push Frontend Image') {
+                    steps {
+                        sh 'docker push $FRONTEND_IMAGE'
+                    }
+                }
             }
         }
 
-        stage('Stop & Remove Existing Container') {
+        stage('Stop & Remove Existing Containers') {
             steps {
                 script {
                     sh '''
-                    if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
-                        docker stop $CONTAINER_NAME || true
-                        docker rm $CONTAINER_NAME || true
-                    fi
+                    docker stop $BACKEND_CONTAINER $FRONTEND_CONTAINER || true
+                    docker rm $BACKEND_CONTAINER $FRONTEND_CONTAINER || true
                     '''
                 }
             }
         }
 
-        stage('Run Docker Container') {
-            steps {
-                sh 'docker run -d -p 5001:5000 --name $CONTAINER_NAME $DOCKER_IMAGE'
+        stage('Run Containers') {
+            parallel {
+                stage('Run Backend Container') {
+                    steps {
+                        sh 'docker run -d -p 5000:5000 --name $BACKEND_CONTAINER $BACKEND_IMAGE'
+                    }
+                }
+
+                stage('Run Frontend Container') {
+                    steps {
+                        sh 'docker run -d -p 3000:3000 --name $FRONTEND_CONTAINER $FRONTEND_IMAGE'
+                    }
+                }
             }
         }
     }
 
     post {
         success {
-            echo "Build, push, and container execution successful!"
+            echo "✅ Deployment successful! Backend and Frontend are running."
         }
         failure {
-            echo "Build or container execution failed."
+            echo "❌ Deployment failed! Check logs for errors."
         }
     }
 }
-   
+         
