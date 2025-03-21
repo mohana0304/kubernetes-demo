@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        BACKEND_IMAGE = "sujisuki/backend-app:latest"
-        FRONTEND_IMAGE = "sujisuki/frontend-app:latest"
+        BACKEND_IMAGE = "mohana0304/backend-app:latest"
+        FRONTEND_IMAGE = "mohana0304/frontend-app:latest"
         BACKEND_CONTAINER = "backend-running-app"
         FRONTEND_CONTAINER = "frontend-running-app"
         REGISTRY_CREDENTIALS = "docker_mona"
