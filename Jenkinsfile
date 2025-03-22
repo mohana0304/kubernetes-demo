@@ -13,7 +13,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github_mona', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    git url: "https://$GIT_USER:$GIT_TOKEN@github.com/mohana0304/kubernetes.git", branch: 'main'
+                    git url: "https://$GIT_USER:$GIT_TOKEN@github.com/mohana0304/kubernetes-demo.git", branch: 'main'
                 }
             }
         }
